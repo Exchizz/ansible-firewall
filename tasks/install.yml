@@ -1,0 +1,40 @@
+- name: "Create {{fw_path}}"
+  ansible.builtin.file:
+    path: "{{ fw_path }}"
+    state: directory
+    mode: '0755'
+
+- name: Get network info from host
+  set_fact:
+    network_interfaces:  "{{ network_interfaces |default({}) | combine( { item: hostvars[inventory_hostname]['ansible_' + (item | replace('-','_')) ]['ipv4']['address'] } ) }}"
+  loop: "{{ ansible_interfaces }}"
+
+
+- debug:
+    msg: "{{ network_interfaces }}"
+
+
+- name: Generate firewall policies
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ fw_path + item }}"
+  with_list:
+   - policy.sh
+   - run.sh
+   - proto.sh
+   - flush.sh
+   - nat.sh
+   - vars.sh
+
+- name: Make firewall "run.sh" executable
+  ansible.builtin.file:
+    path: "{{fw_path}}run.sh"
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Install firewall as systemd service
+  template:
+    src: firewall.service.j2
+    dest: /etc/systemd/system/firewall.service
+  when: dry_run == false

@@ -1,0 +1,28 @@
+#!/bin/bash
+
+{% if enable_nat  | default(false) %}
+echo "Allowing nat"
+
+{% set zones  = firewall.zones %}
+{% set nat    = firewall.nat %}
+
+
+#iptables -t nat -A PREROUTING -p tcp --dport 80 -s 37.139.30.79 -d $HOME_IP -j DNAT --to-destination $NAS01
+#iptables -t nat -A PREROUTING -p tcp --dport 5269  -d $HOME_IP -j DNAT --to-destination 10.10.10.250
+#iptables -t nat -A PREROUTING -p tcp --dport 5222  -d $HOME_IP -j DNAT --to-destination 10.10.10.250
+#iptables -t nat -A PREROUTING -d 10.67.69.101/32 -i $EXTERNAL_IP1_IF -p tcp -m tcp --dport 80 -j DNAT --to-destination 169.254.0.80:80
+#iptables -t nat -A PREROUTING -d 10.67.69.101/32 -i $EXTERNAL_IP1_IF -p tcp -m tcp --dport 443 -j DNAT --to-destination 169.254.0.80:443
+#iptables -t nat -A PREROUTING -d 10.67.69.101/32 -i $EXTERNAL_IP1_IF -p tcp -m tcp --dport 22 -j DNAT --to-destination 169.254.0.22:22
+#iptables -t nat -A PREROUTING -d 10.67.69.101/32 -i $EXTERNAL_IP1_IF -p tcp -m tcp --dport 25 -j DNAT --to-destination 169.254.0.0:25
+#iptables -t nat -A PREROUTING -d 10.67.69.101/32 -i $EXTERNAL_IP1_IF -p tcp -m tcp --dport smtps -j DNAT --to-destination 169.254.0.0:465
+#iptables -t nat -A PREROUTING -d 10.67.69.101/32 -i $EXTERNAL_IP1_IF -p tcp -m tcp --dport imaps -j DNAT --to-destination 169.254.0.143:993
+#iptables -t nat -A PREROUTING -d 10.67.69.101/32 -i $EXTERNAL_IP1_IF -p tcp -m tcp --dport 587 -j DNAT --to-destination 169.254.0.0:587
+#iptables -t nat -A PREROUTING -d 10.67.69.101/32 -i $EXTERNAL_IP1_IF -p tcp -m tcp --dport 1194 -j DNAT --to-destination 169.254.128.1:1194
+
+{% for nat in firewall.nat %}
+{% if nat.type == "MASQUERADE" %}
+$IPTABLES -t nat -A POSTROUTING -o {{ zones[nat.to].interface }} -j MASQUERADE
+{% endif %}
+{% endfor %}
+#su - root -c 'echo 1 > /proc/sys/net/ipv4/ip_forward'
+{% endif %}

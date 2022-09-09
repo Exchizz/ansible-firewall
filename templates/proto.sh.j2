@@ -1,0 +1,178 @@
+#!/bin/bash
+
+
+# Port ranges
+UNPRIV=1024:65535
+HIPRIV=512:1023
+LOPRIV=0:511
+
+# DHCP PROTOCOL
+$IPTABLES -N dhcp-c2s
+$IPTABLES -N dhcp-s2c
+
+    # Client enquiry to server, may be from BCAST_SRC or to BCAST_DST
+    $IPTABLES -A dhcp-c2s -p udp --sport bootpc --dport bootps -j ACCEPT
+    # Server response
+    $IPTABLES -A dhcp-s2c -p udp --sport bootps --dport bootpc -j ACCEPT
+
+
+
+# NTP PROTOCOL
+$IPTABLES -N ntp-c2s
+$IPTABLES -N ntp-s2c
+
+    # NTP request client to server
+    $IPTABLES -A ntp-c2s -p udp --dport 123 -j ACCEPT
+    $IPTABLES -A ntp-c2s -p tcp --dport 123 -m state --state NEW,ESTABLISHED -j ACCEPT
+
+    # NTP response server to client
+    $IPTABLES -A ntp-s2c -p udp --sport 123 -m state --state ESTABLISHED -j ACCEPT
+    $IPTABLES -A ntp-s2c -p tcp --sport 123 -m state --state ESTABLISHED -j ACCEPT
+
+
+# NTP PROTOCOL
+$IPTABLES -N wireguard-c2s
+$IPTABLES -N wireguard-s2c
+
+    # wireguard request client to server
+    $IPTABLES -A wireguard-c2s -p udp --dport 51821 -j ACCEPT
+    $IPTABLES -A wireguard-c2s -p udp --dport 51823 -j ACCEPT
+
+    # Wireguard response server to client
+    $IPTABLES -A wireguard-s2c -p udp --sport 51823 -m state --state ESTABLISHED -j ACCEPT
+    $IPTABLES -A wireguard-s2c -p udp --sport 51821 -m state --state ESTABLISHED -j ACCEPT
+
+
+
+
+# NNTP PROTOCOL
+$IPTABLES -N nntp-c2s
+$IPTABLES -N nntp-s2c
+
+    # NTP request client to server
+    $IPTABLES -A nntp-c2s -p udp --dport nntp -j ACCEPT
+    $IPTABLES -A nntp-c2s -p tcp --dport nntp -m state --state NEW,ESTABLISHED -j ACCEPT
+
+    # NTP response server to client
+    $IPTABLES -A nntp-s2c -p udp --sport nntp -m state --state ESTABLISHED -j ACCEPT
+    $IPTABLES -A nntp-s2c -p tcp --sport nntp -m state --state ESTABLISHED -j ACCEPT
+
+
+
+# DNS PROTOCOL
+$IPTABLES -N dns-c2s
+$IPTABLES -N dns-s2c
+
+	# DNS request client to server
+        $IPTABLES -A dns-c2s -p udp --dport domain --sport $UNPRIV -j ACCEPT
+        $IPTABLES -A dns-c2s -p tcp --dport domain --sport $UNPRIV -m state --state NEW,ESTABLISHED -j ACCEPT
+
+        # DNS response server to client
+        $IPTABLES -A dns-s2c -p udp --sport domain --dport $UNPRIV -m state --state ESTABLISHED -j ACCEPT
+        $IPTABLES -A dns-s2c -p tcp --sport domain --dport $UNPRIV -m state --state ESTABLISHED -j ACCEPT
+
+# ldap udp
+$IPTABLES -N ldap-c2s
+$IPTABLES -N ldap-s2c
+
+	# DNS request client to server
+        $IPTABLES -A ldap-c2s -p udp --dport ldap --sport $UNPRIV -j ACCEPT
+        $IPTABLES -A ldap-c2s -p tcp --dport ldap --sport $UNPRIV -m state --state NEW,ESTABLISHED -j ACCEPT
+
+        # DNS response server to client
+        $IPTABLES -A ldap-s2c -p udp --sport ldap --dport $UNPRIV -m state --state ESTABLISHED -j ACCEPT
+        $IPTABLES -A ldap-s2c -p tcp --sport ldap --dport $UNPRIV -m state --state ESTABLISHED -j ACCEPT
+
+
+# DNS PROTOCOL
+$IPTABLES -N stun-c2s
+$IPTABLES -N stun-s2c
+
+        $IPTABLES -A stun-c2s -m state --state NEW,ESTABLISHED -j ACCEPT
+
+        $IPTABLES -A stun-s2c  -m state --state ESTABLISHED -j ACCEPT
+
+
+
+# DNS PROTOCOL
+$IPTABLES -N vpn-c2s
+$IPTABLES -N vpn-s2c
+
+	# VPN client to server
+        $IPTABLES -A vpn-c2s -p udp --dport 1194 --sport $UNPRIV -j ACCEPT
+        $IPTABLES -A vpn-c2s -p tcp --dport 1194 --sport $UNPRIV -m state --state NEW,ESTABLISHED -j ACCEPT
+
+        # VPN server to client
+        $IPTABLES -A vpn-s2c -p udp --sport 1194 --dport $UNPRIV -m state --state ESTABLISHED -j ACCEPT
+        $IPTABLES -A vpn-s2c -p tcp --sport 1194 --dport $UNPRIV -m state --state ESTABLISHED -j ACCEPT
+
+
+# PING, TRACEROUTE ETC.
+$IPTABLES -N ping-c2s
+$IPTABLES -N ping-s2c
+
+        # PING/TRACEROUTE outgoing packet
+        $IPTABLES -A ping-c2s -p icmp --icmp-type echo-request  -j ACCEPT
+
+        # PING/TRACEROUTE incoming packet
+        $IPTABLES -A ping-s2c -p icmp --icmp-type echo-reply    -j ACCEPT
+
+
+# SECURE SHELL PROTOCOL
+$IPTABLES -N ssh-c2s
+$IPTABLES -N ssh-s2c
+
+        # ssh connection client to server
+        $IPTABLES -A ssh-c2s -p tcp --dport ssh --sport $UNPRIV -m state --state NEW,ESTABLISHED -j ACCEPT
+        $IPTABLES -A ssh-c2s -p tcp --dport ssh --sport $HIPRIV -m state --state NEW,ESTABLISHED -j ACCEPT
+
+        # ssh responses server to client
+        $IPTABLES -A ssh-s2c -p tcp --sport ssh -m state --state ESTABLISHED -j ACCEPT
+
+
+# SECURE SHELL PROTOCOL
+$IPTABLES -N msrpc-c2s
+$IPTABLES -N msrpc-s2c
+
+        # msrpc connection client to server
+        $IPTABLES -A msrpc-c2s -p tcp --dport 135 --sport $UNPRIV -m state --state NEW,ESTABLISHED -j ACCEPT
+        $IPTABLES -A msrpc-c2s -p tcp --dport 135 --sport $HIPRIV -m state --state NEW,ESTABLISHED -j ACCEPT
+
+        # msrpc responses server to client
+        $IPTABLES -A msrpc-s2c -p tcp --sport 135 -m state --state ESTABLISHED -j ACCEPT
+
+
+
+# SECURE SHELL PROTOCOL
+$IPTABLES -N rpc-c2s
+$IPTABLES -N rpc-s2c
+
+        # rpc connection client to server
+#        $IPTABLES -A rpc-c2s -p tcp --dport 135 --sport $UNPRIV -m state --state NEW,ESTABLISHED -j ACCEPT
+        $IPTABLES -A rpc-c2s -p tcp -m multiport --dport 49152:65535 -m state --state NEW,ESTABLISHED -j ACCEPT
+
+        # rpc responses server to client
+        $IPTABLES -A rpc-s2c -p tcp -m multiport --sports 49152:65535 -m state --state ESTABLISHED -j ACCEPT
+
+
+
+# Permitted ICMP Packets
+$IPTABLES -N icmp-ok
+
+    $IPTABLES -A icmp-ok -p icmp --icmp-type source-quench           -j ACCEPT
+    $IPTABLES -A icmp-ok -p icmp --icmp-type parameter-problem       -j ACCEPT
+    $IPTABLES -A icmp-ok -p icmp --icmp-type fragmentation-needed    -j ACCEPT
+    $IPTABLES -A icmp-ok -p icmp --icmp-type destination-unreachable -j ACCEPT
+    $IPTABLES -A icmp-ok -p icmp --icmp-type time-exceeded           -j ACCEPT
+
+
+for P in smtp smtps http https imap imaps submission kerberos microsoft-ds ms-wbt-server;  do
+
+    $IPTABLES -N $P-c2s
+    $IPTABLES -N $P-s2c
+
+    # Protocol P request client to server on port P
+    $IPTABLES -A $P-c2s -p tcp --dport $P --sport $UNPRIV -m state --state NEW,ESTABLISHED -j ACCEPT
+    # Protocol P response server to client from port P
+    $IPTABLES -A $P-s2c -p tcp --sport $P --dport $UNPRIV -m state --state ESTABLISHED     -j ACCEPT
+done

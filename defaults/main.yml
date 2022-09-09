@@ -1,0 +1,2 @@
+fw_path: "/etc/firewall/"
+dry_run: false

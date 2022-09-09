@@ -1,0 +1,48 @@
+# Get resources
+
+#    modprobe ip_tables
+#     modprobe ip_conntrack
+#     modprobe ip_conntrack_ftp
+
+# Start in a known state
+# Set basic policy
+
+
+{% if default_drop  | default(true)  %}
+$IPTABLES -P INPUT   DROP 
+$IPTABLES -P OUTPUT  DROP 
+$IPTABLES -P FORWARD DROP 
+
+{% endif %}
+
+{% if flush_first | default(true) %}
+for A in filter nat mangle raw; do
+    $IPTABLES -t $A -F
+    $IPTABLES -t $A -X
+    $IPTABLES -t $A -Z
+done
+
+
+$IPTABLES -t raw -P PREROUTING  ACCEPT
+$IPTABLES -t nat -P PREROUTING  ACCEPT
+$IPTABLES -t nat -P POSTROUTING ACCEPT
+#echo "0" > /proc/sys/net/ipv6/conf/all/disable_ipv6                # Enable IPv6
+#echo "1" > /proc/sys/net/ipv4/tcp_syncookies
+#echo "0" > /proc/sys/net/ipv4/icmp_echo_ignore_all
+#echo "1" > /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts
+#echo "0" > /proc/sys/net/ipv4/conf/all/accept_source_route
+#echo "0" > /proc/sys/net/ipv4/conf/all/accept_redirects
+#echo "1" > /proc/sys/net/ipv4/icmp_ignore_bogus_error_responses
+#for interface in /proc/sys/net/ipv4/conf/*/rp_filter; do
+#    echo "1" > ${interface}
+#done
+#echo "1" > /proc/sys/net/ipv4/conf/all/log_martians
+#echo "0" > /proc/sys/net/ipv4/ip_forward
+
+# All loopback traffic is acceptable; everything else is dropped
+
+$IPTABLES -A INPUT  -i lo -j ACCEPT -m comment --comment "Loopback interface"
+$IPTABLES -A OUTPUT -o lo -j ACCEPT -m comment --comment "Loopback interface"
+
+echo "Firewall status: flushed"
+{% endif %}

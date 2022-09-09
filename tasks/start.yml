@@ -1,0 +1,17 @@
+- name: Start firewall and enabled on startup
+  ansible.builtin.systemd:
+    state: started
+    enabled: yes
+    name: firewall
+    daemon_reload: yes
+  when: dry_run == false
+
+- name: DRY run enabled, outputting firewall rules to be created
+  command: /etc/firewall/run.sh
+  when: dry_run  == true 
+  register: dry_run_rules
+
+- name: DRY run FW rules
+  debug:
+    msg: "{{ dry_run_rules.stdout_lines }}"
+  when: dry_run

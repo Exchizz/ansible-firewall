@@ -1,0 +1,61 @@
+#!/bin/bash
+
+echo "Server allowed to talk to internet"
+
+
+{% set zones    = firewall.zones %}
+{% set policies_c2s = firewall.policies | to_json | from_json %}
+{% set policies_s2c = firewall.policies | to_json | from_json %}
+{% set policies = dict()%}
+
+
+{% for policy in policies_c2s -%}
+	{% set _ = policy.update({'protocols' : policy.protocols | map('regex_replace', '$', '-c2s') | list }) %}
+	{% set _ = policy.update({'uniq_name' : 'From' + policy.from + 'To' + policy.to }) %}
+{% endfor %}
+
+
+
+{% for policy in policies_s2c -%}
+	{% set _ = policy.update({"from": policy.to, "to": policy.from}) %}
+	{% set _ = policy.update({'protocols' :policy.protocols | map('regex_replace', '$', '-s2c') | list }) %}
+	{% set _ = policy.update({'uniq_name' : 'From' + policy.from + 'To' + policy.to }) %}
+{% endfor %}
+
+
+
+{% for policy in policies_c2s + policies_s2c %}
+	{% set _ = policies.update({policy.uniq_name : policies[policy.uniq_name] | default([policy]) | combine([policy], list_merge='append' )}) %}
+{% endfor %}
+
+
+{% for uniq_name, policy in policies.items() -%}
+    {% if zones[policy.from].local == true %}
+            {% set chain_name = "OUTPUT" %}
+            {% set direction =  "-o " + zones[policy.to].interface + ' -s ' + network_interfaces[zones[policy.to].interface]  %}
+    {% elif zones[policy.to].local == true %}
+            {% set chain_name = "INPUT" %}
+            {% set direction =  "-i " + zones[policy.from].interface + ' -d ' + network_interfaces[zones[policy.from].interface] %}
+    {% else %}
+            {% set chain_name = "FORWARD" %}
+            {% set direction = "-i " + zones[policy.from].interface + ' -o ' + zones[policy.to].interface %}
+    {% endif %}
+    {% set _ = policy.update({'chain_name': chain_name, 'direction': direction}) %}
+{% endfor %}
+
+#{{ policies }}
+
+
+{% for policy_name, policy in policies.items() %}
+$IPTABLES -N {{ policy_name }}
+        $IPTABLES -A {{ policy.chain_name }} {{ policy.direction }} -j {{ policy_name }}
+
+{% for protocol in policy.protocols %}
+        $IPTABLES -A {{ policy_name }} -j {{ protocol }}
+{% endfor %}
+{% endfor %}
+
+
+iptables -A INPUT   -j LOG --log-prefix "[netfilter] FW In: "  --log-level warning
+iptables -A OUTPUT  -j LOG --log-prefix "[netfilter] FW Out: " --log-level warning
+iptables -A FORWARD -j LOG --log-prefix "[netfilter] FW Fwd: " --log-level warning

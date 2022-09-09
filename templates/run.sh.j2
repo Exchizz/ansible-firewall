@@ -1,0 +1,19 @@
+#!/bin/bash
+WORK_DIR=$(dirname $(realpath $0))
+PATH=/usr/bin:/bin:/sbin/:$WORK_DIR
+echo $PATH
+
+{% if dry_run | default(false) %}
+IPTABLES="echo iptables"
+{% else %}
+IPTABLES=iptables
+{% endif %}
+
+
+. vars.sh
+. flush.sh
+. proto.sh
+. policy.sh
+. nat.sh
+echo "Firewall rules created"
+
